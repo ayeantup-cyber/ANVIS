@@ -554,6 +554,7 @@ input[type="color"] {
   <button class="tabBtn active" onclick="switchTab('audio')"   id="tab-audio">▸ AUDIO</button>
   <button class="tabBtn"        onclick="switchTab('notes')"   id="tab-notes">▸ NOTES</button>
   <button class="tabBtn"        onclick="switchTab('visuals')" id="tab-visuals">◈ VISUALS</button>
+  <button class="tabBtn"        onclick="switchTab('about')"   id="tab-about">◈ ABOUT</button>
 </div>
 
 <!-- ═══════════════ AUDIO PANEL ═══════════════ -->
@@ -696,7 +697,114 @@ input[type="color"] {
 </div>
 </div>
 
-<!-- EXPORT MODAL -->
+<!-- ═══════════════ ABOUT PANEL ═══════════════ -->
+<div class="panel" id="panel-about">
+<div class="container">
+
+  <!-- WHAT IT IZ -->
+  <div class="card">
+    <div class="sectionLabel" style="font-size:11px;margin-bottom:14px;color:var(--cyan);">◈ ANViIS — BLUE COMET NOTES ENGINE</div>
+    <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px;font-family:'Orbitron',sans-serif;">anviis.bluecomet.work</div>
+    <p style="font-size:12px;color:var(--text);line-height:1.8;margin-bottom:14px;">
+      A self-contained progressive web app for writing, protecting, and sharing notes — built for creators, producers, and anyone who thinks while music plays.
+    </p>
+    <p style="font-size:12px;color:var(--text-dim);line-height:1.8;margin-bottom:14px;">
+      Load a track. Write while it plays. Watch the PRISM visualizer react to the audio in real time. Export your notes — plain or AES-256 encrypted — as self-contained HTML files that carry the app with them. Whoever receives your note gets the full experience and can install the app themselves.
+    </p>
+    <p style="font-size:12px;color:var(--text-dim);line-height:1.8;">
+      No accounts. No servers. No tracking. Everything lives in your browser's localStorage.
+    </p>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="card">
+    <div class="sectionLabel" style="margin-bottom:14px;">◈ FEATURES</div>
+    <div style="font-size:12px;color:var(--text-dim);line-height:2.2;">
+      <div>▸ Audio player with real-time Web Audio API visualizer</div>
+      <div>▸ PRISM Engine — 10 visual modes including ALL LAYERS superposition</div>
+      <div style="padding-left:14px;font-size:11px;color:rgba(0,242,255,0.4);">Waveform · Flow Sheet · Pulse Wave · Shimmer Grid · Fluid Spin · Grow Rings · Drift Blur · Crystal Form · Particle Orbit</div>
+      <div>▸ Fullscreen visualizer mode</div>
+      <div>▸ Notes system — title, body, star/favorite, timestamps</div>
+      <div>▸ AES-256-GCM encryption via Web Crypto API — 200,000 PBKDF2 iterations</div>
+      <div>▸ Self-distributing exports — every exported file ships the full app UI</div>
+      <div>▸ PWA — installs to home screen, works fully offline</div>
+      <div>▸ MediaSession API — lock screen media controls</div>
+      <div>▸ Visual settings persist across sessions</div>
+      <div>▸ MIT licensed — use it, fork it, build on it</div>
+    </div>
+  </div>
+
+  <!-- HOW ENCRYPTED EXPORT WORKS -->
+  <div class="card">
+    <div class="sectionLabel" style="margin-bottom:14px;">◈ HOW ENCRYPTED EXPORT WORKS</div>
+    <div style="font-size:12px;color:var(--text-dim);line-height:2.2;">
+      <div>1. Select notes → 🔐 Encrypt → set a password → Export</div>
+      <div>2. The exported .html file is AES-256-GCM encrypted with your password</div>
+      <div>3. Send the file to anyone — opens in any browser</div>
+      <div>4. They enter the password → notes decrypt and render client-side</div>
+      <div>5. The file also carries the ◈ OPEN APP button — they can install the full app</div>
+    </div>
+    <p style="font-size:11px;color:rgba(0,242,255,0.35);margin-top:14px;line-height:1.7;">
+      The encryption never leaves the device. No keys are transmitted anywhere. Ever.
+    </p>
+  </div>
+
+  <!-- BUILT WITH -->
+  <div class="card">
+    <div class="sectionLabel" style="margin-bottom:14px;">◈ BUILT WITH</div>
+    <div style="font-size:12px;color:var(--text-dim);line-height:2.2;">
+      <div>▸ Vanilla HTML / CSS / JavaScript — zero dependencies, zero frameworks</div>
+      <div>▸ Web Audio API — real-time audio analysis &amp; FFT visualization</div>
+      <div>▸ Web Crypto API — AES-256-GCM client-side encryption</div>
+      <div>▸ MediaSession API — lock screen playback controls</div>
+      <div>▸ Service Worker API — offline capability &amp; PWA shell caching</div>
+      <div>▸ Cloudflare Pages — hosting &amp; global edge delivery</div>
+    </div>
+  </div>
+
+  <!-- TOB -->
+  <div class="card">
+    <div class="sectionLabel" style="font-size:11px;margin-bottom:6px;color:var(--cyan);">◈ TOB — TERMS OF BUSINESS</div>
+    <div style="font-size:9px;color:rgba(0,242,255,0.3);letter-spacing:2px;margin-bottom:16px;font-family:'Orbitron',sans-serif;">ATOB PUBLISHING BMI // BLUECOMET.WORK // AIITONE.NET</div>
+
+    <div style="font-size:11px;color:var(--text-dim);line-height:1.9;">
+
+      <p style="margin-bottom:12px;"><span style="color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;">1. NO DATA COLLECTION</span><br/>
+      This application collects zero user data. All notes, settings, and content are stored exclusively in your browser's localStorage on your device. Nothing is transmitted to any server. No analytics, no telemetry, no tracking of any kind.</p>
+
+      <p style="margin-bottom:12px;"><span style="color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;">2. LOCAL STORAGE &amp; YOUR RESPONSIBILITY</span><br/>
+      Because all data is stored locally, clearing your browser data or uninstalling the app will permanently delete your notes. Export and back up your notes regularly. The developer is not responsible for data loss resulting from browser resets, device changes, or storage clearing.</p>
+
+      <p style="margin-bottom:12px;"><span style="color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;">3. ENCRYPTION DISCLAIMER</span><br/>
+      AES-256-GCM encryption is implemented using the browser's native Web Crypto API. The strength of your encrypted exports depends entirely on the password you choose. The developer makes no guarantee of absolute security. You are responsible for safeguarding your passwords and encrypted files.</p>
+
+      <p style="margin-bottom:12px;"><span style="color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;">4. MIT LICENSE</span><br/>
+      This software is released under the MIT License. You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software, provided the original copyright notice and this permission notice are included in all copies or substantial portions of the software.</p>
+
+      <p style="margin-bottom:12px;"><span style="color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;">5. NO WARRANTY</span><br/>
+      This software is provided "as is", without warranty of any kind, express or implied. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability arising from the use of this software.</p>
+
+      <p style="margin-bottom:12px;"><span style="color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;">6. INTELLECTUAL PROPERTY</span><br/>
+      The Blue Comet Notes Engine, ANViIS, and associated branding are properties of ATOB PUBLISHING BMI, operating under BlueComet.Work and AiiTONE.NET. The PRISM visualizer engine, sovereign field system architecture, and self-distributing encrypted export concept are original works developed under the Blue Comet ecosystem.</p>
+
+      <p style="margin-bottom:0;"><span style="color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;">7. CONTACT &amp; ECOSYSTEM</span><br/>
+      For inquiries, collaboration, or to explore the broader Blue Comet ecosystem:<br/>
+      <a href="https://www.bluecomet.work/" target="_blank" rel="noopener" style="color:rgba(0,242,255,0.6);text-decoration:none;">BlueComet.Work</a> &nbsp;·&nbsp;
+      <a href="https://anviis.bluecomet.work/" target="_blank" rel="noopener" style="color:rgba(0,242,255,0.6);text-decoration:none;">ANViIS.BlueComet.Work</a> &nbsp;·&nbsp;
+      <a href="https://www.aiitone.net/" target="_blank" rel="noopener" style="color:rgba(0,242,255,0.6);text-decoration:none;">AiiTONE.NET</a>
+      </p>
+
+    </div>
+  </div>
+
+  <!-- VERSION -->
+  <div style="text-align:center;padding:16px 0 8px;">
+    <div style="font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:3px;color:rgba(0,242,255,0.2);">BC NOTES ENGINE — PHASE 1 — MIT</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:2px;color:rgba(0,242,255,0.12);margin-top:4px;">ATOB PUBLISHING BMI // BLUECOMET.WORK // AIITONE.NET</div>
+  </div>
+
+</div>
+</div>
 <div class="modalOverlay" id="exportModal">
   <div class="modal">
     <div class="modalTitle" id="exportModalTitle">EXPORT NOTES</div>
@@ -1235,7 +1343,7 @@ async function aesEncrypt(plaintext, password) {
 function getAppEmbed() {
   // Points to the live deployed app — update this after Cloudflare deploy
   // e.g. 'https://notes.aiitone.net' or whatever subdomain you assign
-  return 'https://www.bluecomet.work/';
+  return 'https://anviis.bluecomet.work/';
 }
 
 function buildPlainFile(notes, title) {
