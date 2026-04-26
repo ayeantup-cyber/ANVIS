@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="BC Notes"/>
 <meta name="theme-color" content="#02030a"/>
 <meta name="description" content="Blue Comet Sovereign Field Notes Engine"/>
+<link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%2302030a'/%3E%3Ccircle cx='256' cy='200' r='90' fill='none' stroke='%2300f2ff' stroke-width='18'/%3E%3Cellipse cx='256' cy='200' rx='90' ry='30' fill='none' stroke='%2300f2ff' stroke-width='10' opacity='0.5'/%3E%3Cline x1='256' y1='110' x2='256' y2='290' stroke='%2300f2ff' stroke-width='10' opacity='0.5'/%3E%3Crect x='160' y='320' width='192' height='22' rx='6' fill='%2300f2ff' opacity='0.7'/%3E%3Crect x='180' y='358' width='152' height='16' rx='6' fill='%2300f2ff' opacity='0.4'/%3E%3Crect x='200' y='390' width='112' height='16' rx='6' fill='%2300f2ff' opacity='0.25'/%3E%3C/svg%3E"/>
 
 <style>
@@ -662,7 +663,7 @@ input[type="color"] {
     <div class="toggleRow">
       <label>AUTO CHROMA CYCLE</label>
       <label class="toggle">
-        <input type="checkbox" id="autoColor" onchange="updateAutoColor()"/>
+        <input type="checkbox" id="autoColor" checked onchange="updateAutoColor()"/>
         <span class="toggleSlider"></span>
       </label>
     </div>
@@ -678,7 +679,7 @@ input[type="color"] {
     <div class="toggleRow">
       <label>GLOBAL BG VISUALIZER</label>
       <label class="toggle">
-        <input type="checkbox" id="showGlobal" onchange="updateShowGlobal()"/>
+        <input type="checkbox" id="showGlobal" checked onchange="updateShowGlobal()"/>
         <span class="toggleSlider"></span>
       </label>
     </div>
@@ -714,42 +715,25 @@ input[type="color"] {
 
 <div class="toast" id="toast"></div>
 
-<script>
-// ═══════════════════════════════════════════════════
-//  PWA — MANIFEST
-// ═══════════════════════════════════════════════════
-(function injectManifest() {
-  const m = {
-    name: "Blue Comet Notes Engine", short_name: "BC Notes",
-    description: "Sovereign Field Notes System",
-    start_url: "./", display: "standalone",
-    orientation: "portrait-primary",
-    background_color: "#02030a", theme_color: "#02030a",
-    icons: [{
-      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%2302030a'/%3E%3Ccircle cx='256' cy='200' r='90' fill='none' stroke='%2300f2ff' stroke-width='18'/%3E%3C/svg%3E",
-      sizes: "512x512", type: "image/svg+xml", purpose: "any maskable"
-    }]
-  };
-  const blob = new Blob([JSON.stringify(m)], { type: 'application/manifest+json' });
-  const link = Object.assign(document.createElement('link'), { rel: 'manifest', href: URL.createObjectURL(blob) });
-  document.head.appendChild(link);
-})();
+<!-- ── SITE FOOTER ── -->
+<div style="text-align:center;padding:28px 0 calc(20px + var(--safe-bot));position:relative;z-index:1;">
+  <a href="https://www.bluecomet.work/" target="_blank" rel="noopener"
+     style="font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:3px;color:rgba(0,242,255,0.25);text-decoration:none;transition:color 0.3s;"
+     onmouseover="this.style.color='rgba(0,242,255,0.7)'"
+     onmouseout="this.style.color='rgba(0,242,255,0.25)'">
+    ◈ BLUECOMET.WORK
+  </a>
+</div>
 
+<script>
 // ═══════════════════════════════════════════════════
 //  PWA — SERVICE WORKER
 // ═══════════════════════════════════════════════════
 (function registerSW() {
   if (!('serviceWorker' in navigator)) return;
-  const sw = `
-const C='bc-notes-v2';
-self.addEventListener('install',()=>self.skipWaiting());
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==C).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});
-self.addEventListener('fetch',e=>{if(e.request.mode==='navigate'){e.respondWith(caches.match(e.request).then(c=>{if(c)return c;return fetch(e.request).then(r=>{const cl=r.clone();caches.open(C).then(ca=>ca.put(e.request,cl));return r;});}));}else{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));}});
-`;
-  const blob = new Blob([sw], { type: 'application/javascript' });
-  navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: '/' })
-    .then(r => console.log('[BC SW]', r.scope))
-    .catch(e => console.warn('[BC SW] blocked:', e.message));
+  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    .then(r => console.log('[BC SW] registered:', r.scope))
+    .catch(e => console.warn('[BC SW] failed:', e.message));
 })();
 
 // ═══════════════════════════════════════════════════
@@ -856,11 +840,11 @@ const VIZ = {
   intensity: 1.0,
   hue: 180,
   hueStep: 0.5,
-  isAuto: false,
+  isAuto: true,
   cycleRate: 20,
   baseColor: '#00f2ff',
   showInCard: true,
-  showGlobal: false,
+  showGlobal: true,
 };
 
 function setVizMode(m) {
@@ -885,23 +869,25 @@ function updateShowGlobal()  {
 function saveVizConfig() { localStorage.setItem('bc_viz_config', JSON.stringify(VIZ)); }
 function loadVizConfig() {
   const saved = localStorage.getItem('bc_viz_config');
-  if (!saved) return;
-  try {
-    const c = JSON.parse(saved);
-    Object.assign(VIZ, c);
-    document.getElementById('speedRange').value     = Math.round(VIZ.speed * 100);
-    document.getElementById('speedVal').textContent = Math.round(VIZ.speed * 100) + '%';
-    document.getElementById('intensityRange').value     = Math.round(VIZ.intensity * 100);
-    document.getElementById('intensityVal').textContent = Math.round(VIZ.intensity * 100) + '%';
-    document.getElementById('cycleRange').value  = VIZ.cycleRate;
-    document.getElementById('cycleVal').textContent = VIZ.cycleRate;
-    document.getElementById('colorPicker').value = VIZ.baseColor;
-    document.getElementById('autoColor').checked = VIZ.isAuto;
-    document.getElementById('showInCard').checked = VIZ.showInCard;
-    document.getElementById('showGlobal').checked = VIZ.showGlobal;
-    setVizMode(VIZ.mode);
-    if (VIZ.showGlobal) document.getElementById('globalCanvas').classList.add('active');
-  } catch(e) {}
+  if (saved) {
+    try {
+      const c = JSON.parse(saved);
+      Object.assign(VIZ, c);
+    } catch(e) {}
+  }
+  // Apply VIZ state to UI — whether from saved config or defaults
+  document.getElementById('speedRange').value          = Math.round(VIZ.speed * 100);
+  document.getElementById('speedVal').textContent      = Math.round(VIZ.speed * 100) + '%';
+  document.getElementById('intensityRange').value      = Math.round(VIZ.intensity * 100);
+  document.getElementById('intensityVal').textContent  = Math.round(VIZ.intensity * 100) + '%';
+  document.getElementById('cycleRange').value          = VIZ.cycleRate;
+  document.getElementById('cycleVal').textContent      = VIZ.cycleRate;
+  document.getElementById('colorPicker').value         = VIZ.baseColor;
+  document.getElementById('autoColor').checked         = VIZ.isAuto;
+  document.getElementById('showInCard').checked        = VIZ.showInCard;
+  document.getElementById('showGlobal').checked        = VIZ.showGlobal;
+  setVizMode(VIZ.mode);
+  if (VIZ.showGlobal) document.getElementById('globalCanvas').classList.add('active');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1246,34 +1232,143 @@ async function aesEncrypt(plaintext, password) {
   return { salt: b64(salt.buffer), iv: b64(iv.buffer), cipher: b64(ci) };
 }
 
+function getAppEmbed() {
+  // Points to the live deployed app — update this after Cloudflare deploy
+  // e.g. 'https://notes.aiitone.net' or whatever subdomain you assign
+  return 'https://www.bluecomet.work/';
+}
+
 function buildPlainFile(notes, title) {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escH(title)}</title>
-<style>body{font-family:monospace;background:#02030a;color:#e0f8ff;padding:24px;}
-.note{border:1px solid #00f2ff44;border-radius:10px;padding:16px;margin:12px 0;}
-.t{color:#00f2ff;font-weight:bold;margin-bottom:8px;}.d{color:#5a8a9f;font-size:11px;}</style></head><body>
-<h2 style="color:#00f2ff;letter-spacing:3px">BC NOTES — ${escH(title)}</h2>
-${notes.map(n=>`<div class="note"><div class="t">${escH(n.title||'Untitled')}</div><pre style="white-space:pre-wrap;margin:0">${escH(n.text)}</pre><div class="d">${new Date(n.created).toLocaleString()}</div></div>`).join('')}
-</body></html>`;
+  const notesHTML = notes.map(n =>
+    `<div class="note">
+      <div class="t">${escH(n.title||'Untitled')}${n.star ? ' <span style="color:#FFD166">★</span>' : ''}</div>
+      <pre class="body">${escH(n.text)}</pre>
+      <div class="d">${new Date(n.created).toLocaleString()}</div>
+    </div>`
+  ).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>BC Notes — ${escH(title)}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Share Tech Mono',monospace;background:#02030a;color:#e0f8ff;min-height:100vh;padding:0 0 40px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid rgba(0,242,255,0.1);background:rgba(2,3,10,0.97);position:sticky;top:0;z-index:10;backdrop-filter:blur(16px);}
+.topbar-title{font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:3px;color:#00f2ff;text-shadow:0 0 16px rgba(0,242,255,0.5);}
+.launch-btn{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;padding:8px 14px;background:rgba(0,242,255,0.1);border:1px solid rgba(0,242,255,0.4);border-radius:8px;color:#00f2ff;cursor:pointer;text-decoration:none;transition:all 0.2s;white-space:nowrap;}
+.launch-btn:hover{background:rgba(0,242,255,0.2);border-color:#00f2ff;box-shadow:0 0 14px rgba(0,242,255,0.2);}
+.container{max-width:800px;margin:0 auto;padding:20px 16px;}
+.note{border:1px solid rgba(0,242,255,0.12);border-radius:12px;padding:16px;margin-bottom:14px;background:rgba(5,10,20,0.6);backdrop-filter:blur(8px);}
+.t{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:1px;color:#00f2ff;margin-bottom:8px;font-weight:bold;}
+.body{white-space:pre-wrap;font-size:13px;color:#e0f8ff;line-height:1.6;font-family:'Share Tech Mono',monospace;}
+.d{font-size:10px;color:rgba(0,242,255,0.3);margin-top:10px;}
+.footer{text-align:center;padding:32px 0 16px;border-top:1px solid rgba(0,242,255,0.06);margin-top:20px;}
+.footer a{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:3px;color:rgba(0,242,255,0.22);text-decoration:none;transition:color 0.3s;}
+.footer a:hover{color:rgba(0,242,255,0.6);}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title">BC NOTES — ${escH(title)}</div>
+  <a class="launch-btn" href="${getAppEmbed()}" target="_blank">◈ OPEN APP</a>
+</div>
+<div class="container">
+  ${notesHTML}
+  <div class="footer">
+    <a href="https://www.bluecomet.work/" target="_blank" rel="noopener">◈ BLUECOMET.WORK</a>
+  </div>
+</div>
+</body>
+</html>`;
 }
 
 function buildEncryptedFile(payload, title) {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escH(title)} [ENCRYPTED]</title>
-<style>body{font-family:monospace;background:#02030a;color:#e0f8ff;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;}
-input{padding:10px 16px;border:1px solid #00f2ff66;border-radius:8px;background:#0a1428;color:#e0f8ff;font-family:monospace;width:260px;}
-button{padding:10px 20px;background:#00f2ff;color:#001018;border:none;border-radius:8px;font-weight:bold;cursor:pointer;}
-pre{white-space:pre-wrap;max-width:700px;color:#5a8a9f;}</style></head><body>
-<div style="color:#00f2ff;font-size:18px;letter-spacing:3px">🔐 ENCRYPTED NOTES</div>
-<input type="password" id="pw" placeholder="Enter password..."/>
-<button onclick="dec()">Decrypt</button><pre id="out"></pre>
-<script>const P=${JSON.stringify(payload)};
-async function dec(){const pw=document.getElementById('pw').value;if(!pw)return;
-try{const s=Uint8Array.from(atob(P.salt),c=>c.charCodeAt(0));const iv=Uint8Array.from(atob(P.iv),c=>c.charCodeAt(0));const ct=Uint8Array.from(atob(P.cipher),c=>c.charCodeAt(0));
-const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
-const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
-const pl=await crypto.subtle.decrypt({name:'AES-GCM',iv},k,ct);
-const notes=JSON.parse(new TextDecoder().decode(pl));
-document.getElementById('out').textContent=notes.map(n=>'['+(n.star?'★':'·')+'] '+n.title+'\\n'+n.text+'\\n---').join('\\n');
-}catch(e){document.getElementById('out').textContent='DECRYPTION FAILED — WRONG PASSWORD';}}<\/script></body></html>`;
+  const appEmbed = getAppEmbed();
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>${escH(title)} [ENCRYPTED]</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Share Tech Mono',monospace;background:#02030a;color:#e0f8ff;min-height:100vh;padding:0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid rgba(0,242,255,0.1);background:rgba(2,3,10,0.97);position:sticky;top:0;z-index:10;backdrop-filter:blur(16px);}
+.topbar-title{font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:3px;color:#00f2ff;text-shadow:0 0 16px rgba(0,242,255,0.5);}
+.launch-btn{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;padding:8px 14px;background:rgba(0,242,255,0.1);border:1px solid rgba(0,242,255,0.4);border-radius:8px;color:#00f2ff;cursor:pointer;text-decoration:none;transition:all 0.2s;white-space:nowrap;}
+.launch-btn:hover{background:rgba(0,242,255,0.2);border-color:#00f2ff;box-shadow:0 0 14px rgba(0,242,255,0.2);}
+.vault{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);gap:14px;padding:30px 20px;}
+.vault-title{font-family:'Orbitron',sans-serif;font-size:15px;letter-spacing:4px;color:#00f2ff;text-shadow:0 0 20px rgba(0,242,255,0.4);}
+.vault-sub{font-size:11px;color:rgba(0,242,255,0.35);letter-spacing:2px;}
+input[type=password]{padding:12px 18px;border:1px solid rgba(0,242,255,0.3);border-radius:10px;background:rgba(0,10,30,0.8);color:#e0f8ff;font-family:'Share Tech Mono',monospace;font-size:14px;width:280px;outline:none;text-align:center;letter-spacing:2px;transition:border 0.2s;}
+input[type=password]:focus{border-color:rgba(0,242,255,0.6);box-shadow:0 0 0 2px rgba(0,242,255,0.08);}
+.dec-btn{padding:11px 28px;background:#00f2ff;color:#001018;border:none;border-radius:10px;font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:2px;font-weight:bold;cursor:pointer;transition:all 0.2s;}
+.dec-btn:hover{filter:brightness(1.15);}
+.notes-out{display:none;width:100%;max-width:760px;margin-top:10px;}
+.note{border:1px solid rgba(0,242,255,0.12);border-radius:12px;padding:16px;margin-bottom:14px;background:rgba(5,10,20,0.6);}
+.nt{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:1px;color:#00f2ff;margin-bottom:8px;font-weight:bold;}
+.nb{white-space:pre-wrap;font-size:13px;color:#e0f8ff;line-height:1.6;}
+.nd{font-size:10px;color:rgba(0,242,255,0.3);margin-top:10px;}
+.err{color:#ff3a5c;font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:2px;}
+.footer{text-align:center;padding:28px 0 20px;border-top:1px solid rgba(0,242,255,0.06);margin-top:10px;}
+.footer a{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:3px;color:rgba(0,242,255,0.22);text-decoration:none;transition:color 0.3s;}
+.footer a:hover{color:rgba(0,242,255,0.6);}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title">🔐 ${escH(title)}</div>
+  <a class="launch-btn" href="${appEmbed}" target="_blank">◈ OPEN APP</a>
+</div>
+<div class="vault" id="vaultView">
+  <div class="vault-title">ENCRYPTED NOTES</div>
+  <div class="vault-sub">ENTER PASSWORD TO DECRYPT</div>
+  <input type="password" id="pw" placeholder="· · · · · · · ·" onkeydown="if(event.key==='Enter')dec()"/>
+  <button class="dec-btn" onclick="dec()">DECRYPT</button>
+  <div class="err" id="errMsg"></div>
+</div>
+<div id="notesOut" class="notes-out" style="padding:20px;">
+  <div id="notesList"></div>
+  <div class="footer">
+    <a href="https://www.bluecomet.work/" target="_blank" rel="noopener">◈ BLUECOMET.WORK</a>
+  </div>
+</div>
+<script>
+const P=${JSON.stringify(payload)};
+async function dec(){
+  const pw=document.getElementById('pw').value;
+  if(!pw)return;
+  document.getElementById('errMsg').textContent='';
+  try{
+    const s=Uint8Array.from(atob(P.salt),c=>c.charCodeAt(0));
+    const iv=Uint8Array.from(atob(P.iv),c=>c.charCodeAt(0));
+    const ct=Uint8Array.from(atob(P.cipher),c=>c.charCodeAt(0));
+    const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+    const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+    const pl=await crypto.subtle.decrypt({name:'AES-GCM',iv},k,ct);
+    const notes=JSON.parse(new TextDecoder().decode(pl));
+    const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    document.getElementById('notesList').innerHTML=notes.map(n=>
+      '<div class="note">'+
+      '<div class="nt">'+esc(n.title||'Untitled')+(n.star?' <span style="color:#FFD166">★</span>':'')+'</div>'+
+      '<div class="nb">'+esc(n.text)+'</div>'+
+      '<div class="nd">'+new Date(n.created).toLocaleString()+'</div>'+
+      '</div>'
+    ).join('');
+    document.getElementById('vaultView').style.display='none';
+    document.getElementById('notesOut').style.display='block';
+  }catch(e){
+    document.getElementById('errMsg').textContent='DECRYPTION FAILED — WRONG PASSWORD';
+  }
+}
+<\/script>
+</body>
+</html>`;
 }
 
 function downloadHTML(filename, html) {
