@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Blue Comet Notes Engine</title>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="BC Notes"/>
+<meta name="theme-color" content="#02030a"/>
+<meta name="description" content="Blue Comet Sovereign Field Notes Engine"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%2302030a'/%3E%3Ccircle cx='256' cy='200' r='90' fill='none' stroke='%2300f2ff' stroke-width='18'/%3E%3Cellipse cx='256' cy='200' rx='90' ry='30' fill='none' stroke='%2300f2ff' stroke-width='10' opacity='0.5'/%3E%3Cline x1='256' y1='110' x2='256' y2='290' stroke='%2300f2ff' stroke-width='10' opacity='0.5'/%3E%3Crect x='160' y='320' width='192' height='22' rx='6' fill='%2300f2ff' opacity='0.7'/%3E%3Crect x='180' y='358' width='152' height='16' rx='6' fill='%2300f2ff' opacity='0.4'/%3E%3Crect x='200' y='390' width='112' height='16' rx='6' fill='%2300f2ff' opacity='0.25'/%3E%3C/svg%3E"/>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --cyan:      #00f2ff;
+  --cyan-glow: rgba(0,242,255,0.6);
+  --bg:        #02030a;
+  --bg-card:   rgba(5,10,20,0.75);
+  --text:      #e0f8ff;
+  --text-dim:  #5a8a9f;
+  --border:    rgba(0,242,255,0.15);
+  --danger:    #ff3a5c;
+  --gold:      #FFD166;
+  --safe-top:  env(safe-area-inset-top, 0px);
+  --safe-bot:  env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bot);
+}
+
+/* ── GLOBAL VISUALIZER CANVAS (behind everything) ── */
+#globalCanvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 1s ease;
+  pointer-events: none;
+}
+#globalCanvas.active { opacity: 1; }
+
+/* ── INSTALL BANNER ── */
+.installBanner {
+  display: none;
+  position: fixed;
+  bottom: calc(16px + var(--safe-bot));
+  left: 50%; transform: translateX(-50%);
+  background: rgba(2,5,15,0.97);
+  border: 1px solid var(--cyan);
+  border-radius: 16px;
+  padding: 14px 18px;
+  max-width: 360px;
+  width: calc(100% - 32px);
+  z-index: 400;
+  box-shadow: 0 0 40px rgba(0,242,255,0.2);
+  backdrop-filter: blur(20px);
+}
+.installBanner.show { display: flex; align-items: center; gap: 14px; }
+.installText { flex:1; font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:1.5px; color:var(--text); line-height:1.5; }
+.installText span { display:block; font-size:9px; color:var(--text-dim); margin-top:2px; }
+.installBtns { display:flex; gap:6px; flex-shrink:0; }
+
+/* ── TABS ── */
+.tabBar {
+  display: flex;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(2,3,10,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 15px;
+  padding-top: 4px;
+}
+.tabBtn {
+  flex: 1;
+  padding: 12px 4px 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  transform: none;
+}
+.tabBtn:hover { color: var(--cyan); transform: none; filter: none; }
+.tabBtn.active {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+  text-shadow: 0 0 12px var(--cyan-glow);
+}
+
+/* ── HEADER ── */
+.header {
+  text-align: center;
+  padding: 24px 10px 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  text-shadow: 0 0 20px var(--cyan-glow), 0 0 40px rgba(0,242,255,0.15);
+  position: relative;
+  z-index: 1;
+}
+.header span {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 6px;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
+/* ── PANELS ── */
+.panel { display: none; position: relative; z-index: 1; }
+.panel.active { display: block; }
+
+/* ── CONTAINER ── */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 14px;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 30px rgba(0,242,255,0.03), inset 0 1px 0 rgba(0,242,255,0.06);
+  margin-bottom: 12px;
+}
+
+/* ── AUDIO CARD WITH VISUALIZER BEHIND ── */
+.audioCard {
+  position: relative;
+  overflow: hidden;
+}
+
+#audioCanvas {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 100%;
+  opacity: 0.55;
+  pointer-events: none;
+  border-radius: 14px;
+}
+
+.audioCardInner { position: relative; z-index: 2; }
+
+.loopRing {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,242,255,0.2);
+  transition: all 0.3s;
+  z-index: 3;
+}
+.loopRing.active {
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan-glow);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.6);opacity:0.4} }
+@keyframes drift  { 0%,100%{transform:translate(0,0)} 50%{transform:translate(200px,100px)} }
+@keyframes drift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-120px,-80px)} }
+@keyframes slideUp { from{transform:translateY(80px) translateX(-50%);opacity:0} to{transform:translateY(0) translateX(-50%);opacity:1} }
+
+.audioLabel {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+input[type="file"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed rgba(0,242,255,0.25);
+  border-radius: 8px;
+  background: rgba(0,242,255,0.03);
+  color: var(--text-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Seek bar wrapper — visualizer lives here too */
+.seekWrapper {
+  position: relative;
+  margin-top: 12px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--cyan);
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+.timeLabel { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+/* ── BUTTONS ── */
+.controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+button {
+  padding: 8px 13px;
+  border: none;
+  border-radius: 8px;
+  background: var(--cyan);
+  color: #001018;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+button:hover  { filter: brightness(1.2); transform: translateY(-1px); }
+button:active { transform: translateY(0); }
+
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+button.ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+button.danger { background: var(--danger); color: #fff; }
+button.gold   { background: var(--gold);   color: #1a0e00; }
+button.active-btn { background: rgba(0,242,255,0.15); border: 1px solid var(--cyan); color: var(--cyan); }
+
+/* ── FORM INPUTS ── */
+.sectionLabel {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+input[type="text"],
+input[type="password"],
+textarea {
+  display: block;
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid rgba(0,242,255,0.15);
+  border-radius: 8px;
+  background: rgba(0,10,20,0.6);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border 0.2s;
+  margin-top: 10px;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  border-color: rgba(0,242,255,0.4);
+  box-shadow: 0 0 0 2px rgba(0,242,255,0.06);
+}
+textarea { height: 130px; resize: vertical; }
+
+/* ── SELECT ROW ── */
+.selectToggleRow { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+
+/* ── ACTION BAR ── */
+.actionBar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(0,10,20,0.8);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(14px);
+}
+.actionBar.visible { display: flex; }
+.selCount { flex:1; font-family:'Orbitron',sans-serif; font-size:11px; color:var(--cyan); min-width:80px; }
+
+/* ── NOTE ITEMS ── */
+.noteItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid rgba(0,242,255,0.08);
+  border-radius: 12px;
+  padding: 12px 13px;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: border 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.noteItem:hover    { border-color: rgba(0,242,255,0.25); box-shadow: 0 0 12px rgba(0,242,255,0.05); }
+.noteItem.selected { border-color: var(--cyan); background: rgba(0,242,255,0.05); }
+
+.noteCheckbox { display:none; margin-top:2px; flex-shrink:0; width:15px; height:15px; accent-color:var(--cyan); cursor:pointer; }
+.selectMode .noteCheckbox { display:block; }
+
+.noteBody { flex:1; min-width:0; }
+.noteTitle { font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:1px; font-weight:bold; color:var(--text); padding-right:26px; }
+.notePreview { font-size:11px; color:var(--text-dim); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.noteDate { font-size:9px; color:rgba(0,242,255,0.3); margin-top:4px; }
+
+.starBtn {
+  position: absolute; top:11px; right:11px;
+  background: none; border: none; padding: 0;
+  font-size: 15px; color: var(--text-dim);
+  cursor: pointer; transition: color 0.2s; z-index:2;
+}
+.starBtn:hover { transform:none; filter:none; color:var(--gold); }
+.starBtn.on    { color:var(--gold); text-shadow:0 0 10px rgba(255,209,102,0.5); }
+
+.emptyMsg { text-align:center; padding:36px 0; font-family:'Orbitron',sans-serif; font-size:10px; letter-spacing:3px; color:rgba(0,242,255,0.2); }
+
+/* ── SETTINGS PANEL ── */
+.settingsSection {
+  margin-bottom: 20px;
+}
+.settingsSection .sectionLabel {
+  margin-bottom: 10px;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.vizModeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.vizModeBtn {
+  padding: 9px 8px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.sliderRow label {
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+.sliderRow input[type="range"] {
+  flex: 1;
+  margin-top: 0;
+}
+.sliderRow span {
+  font-size: 10px;
+  color: var(--cyan);
+  min-width: 36px;
+  text-align: right;
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.colorRow label { font-size:10px; color:var(--text-dim); flex:1; }
+input[type="color"] {
+  width: 44px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,242,255,0.06);
+}
+.toggleRow label { font-size:11px; color:var(--text-dim); }
+
+.toggle {
+  position: relative;
+  width: 42px; height: 22px;
+}
+.toggle input { opacity:0; width:0; height:0; }
+.toggleSlider {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,242,255,0.1);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.toggleSlider:before {
+  content: "";
+  position: absolute;
+  left: 3px; top: 50%;
+  transform: translateY(-50%);
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: 0.3s;
+}
+.toggle input:checked + .toggleSlider { background: rgba(0,242,255,0.2); border-color: var(--cyan); }
+.toggle input:checked + .toggleSlider:before { transform: translate(20px, -50%); background: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+
+/* ── FULLSCREEN VISUALIZER ── */
+#fullVizOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(2,3,10,0.97);
+  z-index: 200;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#fullVizOverlay.open { display: flex; }
+#fullVizCanvas { width:100%; height:100%; position:absolute; top:0; left:0; }
+.fullVizClose {
+  position: absolute;
+  top: calc(20px + var(--safe-top));
+  right: 20px;
+  z-index: 201;
+  background: rgba(0,242,255,0.1);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 8px 14px;
+}
+
+/* ── MODAL ── */
+.modalOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(2,3,10,0.9);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modalOverlay.open { display: flex; }
+.modal {
+  background: #030810;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 26px;
+  max-width: 440px; width: 100%;
+  box-shadow: 0 0 60px rgba(0,242,255,0.1);
+}
+.modalTitle { font-family:'Orbitron',sans-serif; font-size:13px; letter-spacing:3px; color:var(--cyan); margin-bottom:8px; }
+.modalSub   { font-size:11px; color:var(--text-dim); margin-bottom:4px; line-height:1.6; }
+.modalActions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: calc(28px + var(--safe-bot));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(2,8,20,0.97);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  padding: 9px 18px;
+  border-radius: 28px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 300;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(0,242,255,0.15); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- GLOBAL BG CANVAS -->
+<canvas id="globalCanvas"></canvas>
+
+<!-- INSTALL BANNER -->
+<div class="installBanner" id="installBanner">
+  <div class="installText">INSTALL APP<span>Add to home screen for offline access</span></div>
+  <div class="installBtns">
+    <button onclick="doInstall()" style="font-size:10px;padding:6px 11px;">⬇ Install</button>
+    <button class="ghost" onclick="dismissInstall()" style="font-size:10px;padding:6px 9px;">✕</button>
+  </div>
+</div>
+
+<!-- FULLSCREEN VISUALIZER -->
+<div id="fullVizOverlay">
+  <canvas id="fullVizCanvas"></canvas>
+  <button class="fullVizClose" onclick="closeFullViz()">✕ CLOSE</button>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  BLUE COMET NOTES ENGINE
+  <span>SOVEREIGN FIELD SYSTEM</span>
+</div>
+
+<!-- TAB BAR -->
+<div class="tabBar">
+  <button class="tabBtn active" onclick="switchTab('audio')"   id="tab-audio">▸ AUDIO</button>
+  <button class="tabBtn"        onclick="switchTab('notes')"   id="tab-notes">▸ NOTES</button>
+  <button class="tabBtn"        onclick="switchTab('visuals')" id="tab-visuals">◈ VISUALS</button>
+</div>
+
+<!-- ═══════════════ AUDIO PANEL ═══════════════ -->
+<div class="panel active" id="panel-audio">
+<div class="container">
+
+  <div class="card audioCard">
+    <canvas id="audioCanvas"></canvas>
+    <div class="loopRing" id="loopRing"></div>
+    <div class="audioCardInner">
+      <div class="audioLabel">▸ AUDIO INTERFACE</div>
+      <input type="file" id="fileInput" accept="audio/*"/>
+      <div id="trackName" style="font-size:11px;color:var(--cyan);margin-top:8px;letter-spacing:1px;min-height:16px;"></div>
+      <div class="controls">
+        <button onclick="playAudio()">▶ Play</button>
+        <button onclick="pauseAudio()">⏸ Pause</button>
+        <button class="ghost" onclick="toggleLoop()" id="loopBtn">🔁 Loop</button>
+        <button class="ghost" onclick="openFullViz()" id="fullVizBtn">◈ Full Viz</button>
+      </div>
+      <div class="seekWrapper">
+        <input type="range" id="seekBar" min="0" value="0" step="0.1"/>
+      </div>
+      <div class="timeLabel" id="timeLabel">0:00 / 0:00</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════ NOTES PANEL ═══════════════ -->
+<div class="panel" id="panel-notes">
+<div class="container">
+
+  <div class="card">
+    <div class="sectionLabel">▸ NEW NOTE</div>
+    <input type="text" id="noteTitle" placeholder="Note title..."/>
+    <textarea id="noteText" placeholder="Write your thoughts, lyrics, ideas..."></textarea>
+    <div class="controls" style="margin-top:12px;">
+      <button onclick="saveNote()">💾 Save Note</button>
+    </div>
+  </div>
+
+  <div class="selectToggleRow">
+    <button class="ghost" id="selectToggleBtn" onclick="toggleSelectMode()">☐ Select</button>
+    <button class="ghost" id="selectAllBtn"    onclick="selectAll()"    style="display:none">Select All</button>
+    <button class="ghost" id="deselectAllBtn"  onclick="deselectAll()"  style="display:none">Deselect All</button>
+  </div>
+
+  <div class="actionBar" id="actionBar">
+    <div class="selCount" id="selCount">0 selected</div>
+    <button class="ghost"  onclick="openExportModal(false)">⬇ Export HTML</button>
+    <button class="gold"   onclick="openExportModal(true)">🔐 Encrypt</button>
+    <button class="danger" onclick="deleteSelected()">✕ Delete</button>
+  </div>
+
+  <div id="list"></div>
+
+</div>
+</div>
+
+<!-- ═══════════════ VISUALS PANEL ═══════════════ -->
+<div class="panel" id="panel-visuals">
+<div class="container">
+
+  <div class="card settingsSection">
+    <div class="sectionLabel">◈ VISUAL MODE</div>
+    <div class="vizModeGrid">
+      <button class="ghost vizModeBtn active-btn" onclick="setVizMode('all')"   id="vm-all">ALL LAYERS</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('wave')"  id="vm-wave">WAVEFORM</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('m1')"    id="vm-m1">FLOW SHEET</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('m2')"    id="vm-m2">PULSE WAVE</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('n1')"    id="vm-n1">FLUID SPIN</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('n2')"    id="vm-n2">GROW RINGS</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('n3')"    id="vm-n3">DRIFT BLUR</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('n5')"    id="vm-n5">CRYSTAL</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('n6')"    id="vm-n6">PARTICLE</button>
+      <button class="ghost vizModeBtn" onclick="setVizMode('m5')"    id="vm-m5">SHIMMER</button>
+    </div>
+  </div>
+
+  <div class="card settingsSection">
+    <div class="sectionLabel">◈ CONTROLS</div>
+
+    <div class="sliderRow">
+      <label>SPEED</label>
+      <input type="range" id="speedRange" min="10" max="200" value="100" oninput="updateSpeed(this.value)"/>
+      <span id="speedVal">100%</span>
+    </div>
+
+    <div class="sliderRow">
+      <label>INTENSITY</label>
+      <input type="range" id="intensityRange" min="10" max="200" value="100" oninput="updateIntensity(this.value)"/>
+      <span id="intensityVal">100%</span>
+    </div>
+
+    <div class="sliderRow">
+      <label>CHROMA RATE</label>
+      <input type="range" id="cycleRange" min="1" max="100" value="20" oninput="updateCycle(this.value)"/>
+      <span id="cycleVal">20</span>
+    </div>
+
+    <div class="colorRow">
+      <label>BASE COLOR</label>
+      <input type="color" id="colorPicker" value="#00f2ff" oninput="updateColor(this.value)"/>
+    </div>
+
+    <div class="toggleRow">
+      <label>AUTO CHROMA CYCLE</label>
+      <label class="toggle">
+        <input type="checkbox" id="autoColor" onchange="updateAutoColor()"/>
+        <span class="toggleSlider"></span>
+      </label>
+    </div>
+
+    <div class="toggleRow">
+      <label>SHOW IN AUDIO CARD</label>
+      <label class="toggle">
+        <input type="checkbox" id="showInCard" checked onchange="updateShowInCard()"/>
+        <span class="toggleSlider"></span>
+      </label>
+    </div>
+
+    <div class="toggleRow">
+      <label>GLOBAL BG VISUALIZER</label>
+      <label class="toggle">
+        <input type="checkbox" id="showGlobal" onchange="updateShowGlobal()"/>
+        <span class="toggleSlider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:20px;">
+    <div class="sectionLabel" style="margin-bottom:14px;">◈ PREVIEW</div>
+    <button onclick="openFullViz()" style="width:100%;padding:14px;font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:3px;">
+      ◈ OPEN FULLSCREEN VISUALIZER
+    </button>
+    <div style="font-size:10px;color:var(--text-dim);margin-top:10px;">Load audio first for reactive visuals</div>
+  </div>
+
+</div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modalOverlay" id="exportModal">
+  <div class="modal">
+    <div class="modalTitle" id="exportModalTitle">EXPORT NOTES</div>
+    <div class="modalSub"   id="exportModalSub"></div>
+    <input type="text"     id="exportFileName"     placeholder="File name (e.g. field-log-01)..."/>
+    <div id="encryptFields" style="display:none">
+      <input type="password" id="encryptPass"        placeholder="Set encryption password..."/>
+      <input type="password" id="encryptPassConfirm" placeholder="Confirm password..."/>
+    </div>
+    <div class="modalActions">
+      <button onclick="doExport()">⬇ Export</button>
+      <button class="ghost" onclick="closeExportModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  PWA — MANIFEST
+// ═══════════════════════════════════════════════════
+(function injectManifest() {
+  const m = {
+    name: "Blue Comet Notes Engine", short_name: "BC Notes",
+    description: "Sovereign Field Notes System",
+    start_url: "./", display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#02030a", theme_color: "#02030a",
+    icons: [{
+      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%2302030a'/%3E%3Ccircle cx='256' cy='200' r='90' fill='none' stroke='%2300f2ff' stroke-width='18'/%3E%3C/svg%3E",
+      sizes: "512x512", type: "image/svg+xml", purpose: "any maskable"
+    }]
+  };
+  const blob = new Blob([JSON.stringify(m)], { type: 'application/manifest+json' });
+  const link = Object.assign(document.createElement('link'), { rel: 'manifest', href: URL.createObjectURL(blob) });
+  document.head.appendChild(link);
+})();
+
+// ═══════════════════════════════════════════════════
+//  PWA — SERVICE WORKER
+// ═══════════════════════════════════════════════════
+(function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  const sw = `
+const C='bc-notes-v2';
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==C).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});
+self.addEventListener('fetch',e=>{if(e.request.mode==='navigate'){e.respondWith(caches.match(e.request).then(c=>{if(c)return c;return fetch(e.request).then(r=>{const cl=r.clone();caches.open(C).then(ca=>ca.put(e.request,cl));return r;});}));}else{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));}});
+`;
+  const blob = new Blob([sw], { type: 'application/javascript' });
+  navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: '/' })
+    .then(r => console.log('[BC SW]', r.scope))
+    .catch(e => console.warn('[BC SW] blocked:', e.message));
+})();
+
+// ═══════════════════════════════════════════════════
+//  PWA — INSTALL
+// ═══════════════════════════════════════════════════
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('show');
+  deferredPrompt = null; toast('APP INSTALLED ✓');
+});
+function doInstall() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(c => {
+    if (c.outcome === 'accepted') toast('INSTALLING...');
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+  });
+}
+function dismissInstall() { document.getElementById('installBanner').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tabBtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+//  WEB AUDIO API
+// ═══════════════════════════════════════════════════
+let audioCtx = null, analyser = null, source = null;
+const player = new Audio();
+let looping  = false;
+
+function initAudioContext() {
+  if (audioCtx) return;
+  audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+  analyser  = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  source    = audioCtx.createMediaElementSource(player);
+  source.connect(analyser);
+  analyser.connect(audioCtx.destination);
+}
+
+document.getElementById('fileInput').addEventListener('change', function () {
+  if (!this.files[0]) return;
+  initAudioContext();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  player.src = URL.createObjectURL(this.files[0]);
+  document.getElementById('trackName').textContent = '▸ ' + this.files[0].name.replace(/\.[^/.]+$/, '').toUpperCase();
+  player.play();
+  // MediaSession
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: this.files[0].name.replace(/\.[^/.]+$/, ''),
+      artist: 'AIITØNE — BC Notes Engine',
+      album: 'SOVEREIGN',
+      artwork: [{ src: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 512 512\'%3E%3Crect width=\'512\' height=\'512\' fill=\'%2302030a\'/%3E%3Ccircle cx=\'256\' cy=\'200\' r=\'90\' fill=\'none\' stroke=\'%2300f2ff\' stroke-width=\'18\'/%3E%3C/svg%3E', sizes: '512x512', type: 'image/svg+xml' }]
+    });
+    navigator.mediaSession.setActionHandler('play',  () => player.play());
+    navigator.mediaSession.setActionHandler('pause', () => player.pause());
+    navigator.mediaSession.setActionHandler('seekbackward', () => { player.currentTime = Math.max(0, player.currentTime - 10); });
+    navigator.mediaSession.setActionHandler('seekforward',  () => { player.currentTime = Math.min(player.duration, player.currentTime + 10); });
+  }
+});
+
+function playAudio()  { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); player.play(); }
+function pauseAudio() { player.pause(); }
+function toggleLoop() {
+  looping = !looping; player.loop = looping;
+  document.getElementById('loopRing').classList.toggle('active', looping);
+  document.getElementById('loopBtn').classList.toggle('active-btn', looping);
+}
+
+const seekBar   = document.getElementById('seekBar');
+const timeLabel = document.getElementById('timeLabel');
+
+player.addEventListener('timeupdate', () => {
+  seekBar.max   = player.duration || 0;
+  seekBar.value = player.currentTime;
+  timeLabel.textContent = fmtTime(player.currentTime) + ' / ' + (player.duration ? fmtTime(player.duration) : '0:00');
+  if ('mediaSession' in navigator && player.duration) {
+    navigator.mediaSession.setPositionState({ duration: player.duration, playbackRate: player.playbackRate, position: player.currentTime });
+  }
+});
+seekBar.addEventListener('input', () => { player.currentTime = +seekBar.value; });
+
+function fmtTime(s) { return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0'); }
+
+// ═══════════════════════════════════════════════════
+//  VISUALIZER CONFIG
+// ═══════════════════════════════════════════════════
+const VIZ = {
+  mode: 'all',
+  speed: 1.0,
+  intensity: 1.0,
+  hue: 180,
+  hueStep: 0.5,
+  isAuto: false,
+  cycleRate: 20,
+  baseColor: '#00f2ff',
+  showInCard: true,
+  showGlobal: false,
+};
+
+function setVizMode(m) {
+  VIZ.mode = m;
+  document.querySelectorAll('.vizModeBtn').forEach(b => b.classList.remove('active-btn'));
+  const btn = document.getElementById('vm-' + m);
+  if (btn) btn.classList.add('active-btn');
+  saveVizConfig();
+}
+function updateSpeed(v)     { VIZ.speed     = v/100; document.getElementById('speedVal').textContent     = v+'%'; saveVizConfig(); }
+function updateIntensity(v) { VIZ.intensity = v/100; document.getElementById('intensityVal').textContent = v+'%'; saveVizConfig(); }
+function updateCycle(v)     { VIZ.cycleRate = +v;    document.getElementById('cycleVal').textContent     = v;     saveVizConfig(); }
+function updateColor(v)     { VIZ.baseColor = v; saveVizConfig(); }
+function updateAutoColor()  { VIZ.isAuto = document.getElementById('autoColor').checked; saveVizConfig(); }
+function updateShowInCard()  { VIZ.showInCard = document.getElementById('showInCard').checked; saveVizConfig(); }
+function updateShowGlobal()  {
+  VIZ.showGlobal = document.getElementById('showGlobal').checked;
+  document.getElementById('globalCanvas').classList.toggle('active', VIZ.showGlobal);
+  saveVizConfig();
+}
+
+function saveVizConfig() { localStorage.setItem('bc_viz_config', JSON.stringify(VIZ)); }
+function loadVizConfig() {
+  const saved = localStorage.getItem('bc_viz_config');
+  if (!saved) return;
+  try {
+    const c = JSON.parse(saved);
+    Object.assign(VIZ, c);
+    document.getElementById('speedRange').value     = Math.round(VIZ.speed * 100);
+    document.getElementById('speedVal').textContent = Math.round(VIZ.speed * 100) + '%';
+    document.getElementById('intensityRange').value     = Math.round(VIZ.intensity * 100);
+    document.getElementById('intensityVal').textContent = Math.round(VIZ.intensity * 100) + '%';
+    document.getElementById('cycleRange').value  = VIZ.cycleRate;
+    document.getElementById('cycleVal').textContent = VIZ.cycleRate;
+    document.getElementById('colorPicker').value = VIZ.baseColor;
+    document.getElementById('autoColor').checked = VIZ.isAuto;
+    document.getElementById('showInCard').checked = VIZ.showInCard;
+    document.getElementById('showGlobal').checked = VIZ.showGlobal;
+    setVizMode(VIZ.mode);
+    if (VIZ.showGlobal) document.getElementById('globalCanvas').classList.add('active');
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════
+//  PRISM ENGINE — DRAW MODULES
+// ═══════════════════════════════════════════════════
+function getColor() {
+  if (VIZ.isAuto) {
+    VIZ.hue = (VIZ.hue + (VIZ.cycleRate / 20) * VIZ.speed * 0.5) % 360;
+    return `hsl(${VIZ.hue},100%,55%)`;
+  }
+  return VIZ.baseColor;
+}
+
+function getAudioData() {
+  const buf = new Uint8Array(analyser ? analyser.frequencyBinCount : 128);
+  if (analyser && !player.paused) {
+    analyser.getByteFrequencyData(buf);
+  } else {
+    // Idle shimmer when no audio
+    const t = Date.now();
+    for (let i = 0; i < buf.length; i++) {
+      buf[i] = Math.max(0, Math.sin(i * 0.15 + t * 0.001) * 15 + 8);
+    }
+  }
+  return buf;
+}
+
+function drawViz(ctx, w, h, data, color, t) {
+  const isBeat = data.length > 0 && data[0] > 180;
+  const sp = VIZ.speed;
+  const ix = VIZ.intensity;
+  const mode = VIZ.mode;
+
+  const M = {
+    wave: () => {
+      const bw = w / data.length;
+      ctx.fillStyle = color;
+      ctx.shadowBlur = 12 * ix; ctx.shadowColor = color;
+      for (let i = 0; i < data.length; i++) {
+        const bh = (data[i] / 255) * h * 0.65 * ix;
+        ctx.fillRect(i * bw, h/2 - bh/2, Math.max(1, bw - 1), bh);
+      }
+      ctx.shadowBlur = 0;
+    },
+    m1: () => {
+      const grd = ctx.createLinearGradient(0, 0, w, 0);
+      grd.addColorStop(0, 'transparent');
+      grd.addColorStop(0.5, color);
+      grd.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.35 * ix;
+      const off = Math.sin(t * 0.001 * sp) * 80;
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, h/2 - 120 + off, w, 240);
+      ctx.globalAlpha = 1;
+    },
+    m2: () => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = (isBeat ? 8 : 2) * ix;
+      ctx.shadowBlur = 20 * ix; ctx.shadowColor = color;
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, h * 0.22 * ix, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    },
+    m5: () => {
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.18 * ix;
+      for (let x = 0; x < w; x += 40) {
+        for (let y = 0; y < h; y += 40) {
+          if (Math.random() > 0.985) ctx.fillRect(x, y, 2, 2);
+        }
+      }
+      ctx.globalAlpha = 1;
+    },
+    n1: () => {
+      ctx.save();
+      ctx.translate(w/2, h/2);
+      ctx.rotate(t * 0.0004 * sp);
+      const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, h * 0.38);
+      grd.addColorStop(0, color);
+      grd.addColorStop(1, 'transparent');
+      ctx.fillStyle = grd;
+      ctx.globalAlpha = 0.22 * ix;
+      ctx.fillRect(-w, -h, w*2, h*2);
+      ctx.restore();
+    },
+    n2: () => {
+      for (let i = 0; i < 3; i++) {
+        const r = ((t * 0.08 * sp + i * 100) % 280);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 1 - r/280;
+        ctx.shadowBlur = 8 * ix; ctx.shadowColor = color;
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    },
+    n3: () => {
+      ctx.fillStyle = color;
+      const x = (t * 0.04 * sp) % w;
+      ctx.globalAlpha = 0.08 * ix;
+      ctx.fillRect(x, 0, 80, h);
+      ctx.fillRect(w - x, 0, 40, h);
+      ctx.globalAlpha = 1;
+    },
+    n5: () => {
+      ctx.save();
+      ctx.translate(w/2, h/2);
+      ctx.rotate(t * 0.0008 * sp);
+      const s = (isBeat ? 1.4 : 1.0) * 120 * ix;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 12 * ix; ctx.shadowColor = color;
+      ctx.strokeRect(-s/2, -s/2, s, s);
+      ctx.rotate(Math.PI/4);
+      ctx.strokeRect(-s/1.4, -s/1.4, s/0.7, s/0.7);
+      ctx.restore(); ctx.shadowBlur = 0;
+    },
+    n6: () => {
+      const angle = t * 0.0018 * sp;
+      const rx = w/2 + Math.cos(angle) * 160;
+      const ry = h/2 + Math.sin(angle) * 160;
+      ctx.fillStyle = color;
+      ctx.shadowBlur = 20 * ix; ctx.shadowColor = color;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 12 * ix, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  };
+
+  if (mode === 'all') {
+    Object.values(M).forEach(fn => fn());
+  } else if (M[mode]) {
+    M[mode]();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  CANVAS RENDERS
+// ═══════════════════════════════════════════════════
+
+// — Audio card canvas
+const audioCanvas  = document.getElementById('audioCanvas');
+const audioCtxC    = audioCanvas.getContext('2d');
+
+function resizeAudioCanvas() {
+  const card = audioCanvas.parentElement;
+  audioCanvas.width  = card.offsetWidth;
+  audioCanvas.height = card.offsetHeight;
+}
+window.addEventListener('resize', resizeAudioCanvas);
+setTimeout(resizeAudioCanvas, 100);
+
+// — Global bg canvas
+const globalCanvas = document.getElementById('globalCanvas');
+const globalCtxC   = globalCanvas.getContext('2d');
+
+function resizeGlobalCanvas() {
+  globalCanvas.width  = window.innerWidth;
+  globalCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeGlobalCanvas);
+resizeGlobalCanvas();
+
+// — Fullscreen canvas
+const fullVizCanvas = document.getElementById('fullVizCanvas');
+const fullVizCtxC   = fullVizCanvas.getContext('2d');
+let fullVizOpen = false;
+
+function resizeFullCanvas() {
+  fullVizCanvas.width  = window.innerWidth;
+  fullVizCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeFullCanvas);
+resizeFullCanvas();
+
+function openFullViz() {
+  document.getElementById('fullVizOverlay').classList.add('open');
+  fullVizOpen = true;
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function closeFullViz() {
+  document.getElementById('fullVizOverlay').classList.remove('open');
+  fullVizOpen = false;
+}
+
+// — Master animation loop
+function vizLoop() {
+  const t    = Date.now();
+  const data = getAudioData();
+  const color = getColor();
+
+  // Audio card viz
+  if (VIZ.showInCard) {
+    resizeAudioCanvas();
+    audioCtxC.clearRect(0, 0, audioCanvas.width, audioCanvas.height);
+    audioCtxC.fillStyle = 'rgba(2,3,10,0.1)';
+    audioCtxC.fillRect(0, 0, audioCanvas.width, audioCanvas.height);
+    drawViz(audioCtxC, audioCanvas.width, audioCanvas.height, data, color, t);
+  } else {
+    audioCtxC.clearRect(0, 0, audioCanvas.width, audioCanvas.height);
+  }
+
+  // Global bg viz
+  if (VIZ.showGlobal) {
+    globalCtxC.fillStyle = 'rgba(2,3,10,0.15)';
+    globalCtxC.fillRect(0, 0, globalCanvas.width, globalCanvas.height);
+    drawViz(globalCtxC, globalCanvas.width, globalCanvas.height, data, color, t);
+  }
+
+  // Fullscreen viz
+  if (fullVizOpen) {
+    fullVizCtxC.fillStyle = 'rgba(2,3,10,0.18)';
+    fullVizCtxC.fillRect(0, 0, fullVizCanvas.width, fullVizCanvas.height);
+    drawViz(fullVizCtxC, fullVizCanvas.width, fullVizCanvas.height, data, color, t);
+  }
+
+  requestAnimationFrame(vizLoop);
+}
+vizLoop();
+
+// ═══════════════════════════════════════════════════
+//  NOTES STORAGE
+// ═══════════════════════════════════════════════════
+const STORE = 'bc_notes_main';
+function getNotes() { return JSON.parse(localStorage.getItem(STORE) || '[]'); }
+function setNotes(a) { localStorage.setItem(STORE, JSON.stringify(a)); }
+
+function saveNote() {
+  const title = document.getElementById('noteTitle').value.trim();
+  const text  = document.getElementById('noteText').value.trim();
+  if (!title && !text) return;
+  const notes = getNotes();
+  notes.push({ id: Date.now(), title, text, star: false, created: new Date().toISOString() });
+  setNotes(notes);
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteText').value  = '';
+  render();
+  toast('NOTE SAVED');
+}
+
+function toggleStar(id, e) {
+  e.stopPropagation();
+  setNotes(getNotes().map(n => { if (n.id === id) n.star = !n.star; return n; }));
+  render();
+}
+
+function loadNote(n) {
+  if (selectModeOn) return;
+  document.getElementById('noteTitle').value = n.title;
+  document.getElementById('noteText').value  = n.text;
+  switchTab('notes');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════
+//  SELECT MODE
+// ═══════════════════════════════════════════════════
+let selectModeOn = false;
+let selectedIds  = new Set();
+
+function toggleSelectMode() {
+  selectModeOn = !selectModeOn;
+  selectedIds.clear();
+  document.getElementById('selectToggleBtn').textContent = selectModeOn ? '✕ Cancel' : '☐ Select';
+  document.getElementById('selectAllBtn').style.display   = selectModeOn ? '' : 'none';
+  document.getElementById('deselectAllBtn').style.display = selectModeOn ? '' : 'none';
+  updateActionBar(); render();
+}
+function selectAll()   { getNotes().forEach(n => selectedIds.add(n.id)); updateActionBar(); render(); }
+function deselectAll() { selectedIds.clear(); updateActionBar(); render(); }
+function toggleSelect(id, e) {
+  e.stopPropagation();
+  selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id);
+  updateActionBar(); render();
+}
+function updateActionBar() {
+  const bar = document.getElementById('actionBar');
+  if (selectModeOn && selectedIds.size > 0) {
+    bar.classList.add('visible');
+    document.getElementById('selCount').textContent = selectedIds.size + ' selected';
+  } else { bar.classList.remove('visible'); }
+}
+
+// ═══════════════════════════════════════════════════
+//  DELETE
+// ═══════════════════════════════════════════════════
+function deleteSelected() {
+  if (!selectedIds.size) return;
+  if (!confirm('Delete ' + selectedIds.size + ' note(s)?')) return;
+  setNotes(getNotes().filter(n => !selectedIds.has(n.id)));
+  selectedIds.clear(); updateActionBar(); render(); toast('DELETED');
+}
+
+// ═══════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════
+let exportEncrypt = false;
+
+function openExportModal(encrypt) {
+  if (!selectedIds.size) { toast('SELECT NOTES FIRST'); return; }
+  exportEncrypt = encrypt;
+  document.getElementById('exportModalTitle').textContent = encrypt ? 'ENCRYPT + EXPORT' : 'EXPORT HTML';
+  document.getElementById('exportModalSub').textContent   = encrypt
+    ? selectedIds.size + ' note(s) — set a password.'
+    : selectedIds.size + ' note(s) — self-contained HTML.';
+  document.getElementById('encryptFields').style.display = encrypt ? '' : 'none';
+  document.getElementById('encryptPass').value = '';
+  document.getElementById('encryptPassConfirm').value = '';
+  document.getElementById('exportFileName').value = '';
+  document.getElementById('exportModal').classList.add('open');
+}
+function closeExportModal() { document.getElementById('exportModal').classList.remove('open'); }
+
+async function doExport() {
+  const fileName = document.getElementById('exportFileName').value.trim() || 'bc-notes-export';
+  const notes    = getNotes().filter(n => selectedIds.has(n.id));
+  if (exportEncrypt) {
+    const pass = document.getElementById('encryptPass').value;
+    const conf = document.getElementById('encryptPassConfirm').value;
+    if (!pass)        { toast('PASSWORD REQUIRED'); return; }
+    if (pass !== conf){ toast('PASSWORDS DO NOT MATCH'); return; }
+    const payload = await aesEncrypt(JSON.stringify(notes), pass);
+    downloadHTML(fileName + '.html', buildEncryptedFile(payload, fileName));
+  } else {
+    downloadHTML(fileName + '.html', buildPlainFile(notes, fileName));
+  }
+  closeExportModal(); toast('EXPORTED');
+}
+
+async function aesEncrypt(plaintext, password) {
+  const enc  = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const km   = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key  = await crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:200000, hash:'SHA-256' }, km, { name:'AES-GCM', length:256 }, false, ['encrypt']);
+  const ci   = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, enc.encode(plaintext));
+  const b64  = b => btoa(String.fromCharCode(...new Uint8Array(b instanceof ArrayBuffer ? b : b.buffer)));
+  return { salt: b64(salt.buffer), iv: b64(iv.buffer), cipher: b64(ci) };
+}
+
+function buildPlainFile(notes, title) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escH(title)}</title>
+<style>body{font-family:monospace;background:#02030a;color:#e0f8ff;padding:24px;}
+.note{border:1px solid #00f2ff44;border-radius:10px;padding:16px;margin:12px 0;}
+.t{color:#00f2ff;font-weight:bold;margin-bottom:8px;}.d{color:#5a8a9f;font-size:11px;}</style></head><body>
+<h2 style="color:#00f2ff;letter-spacing:3px">BC NOTES — ${escH(title)}</h2>
+${notes.map(n=>`<div class="note"><div class="t">${escH(n.title||'Untitled')}</div><pre style="white-space:pre-wrap;margin:0">${escH(n.text)}</pre><div class="d">${new Date(n.created).toLocaleString()}</div></div>`).join('')}
+</body></html>`;
+}
+
+function buildEncryptedFile(payload, title) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escH(title)} [ENCRYPTED]</title>
+<style>body{font-family:monospace;background:#02030a;color:#e0f8ff;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;}
+input{padding:10px 16px;border:1px solid #00f2ff66;border-radius:8px;background:#0a1428;color:#e0f8ff;font-family:monospace;width:260px;}
+button{padding:10px 20px;background:#00f2ff;color:#001018;border:none;border-radius:8px;font-weight:bold;cursor:pointer;}
+pre{white-space:pre-wrap;max-width:700px;color:#5a8a9f;}</style></head><body>
+<div style="color:#00f2ff;font-size:18px;letter-spacing:3px">🔐 ENCRYPTED NOTES</div>
+<input type="password" id="pw" placeholder="Enter password..."/>
+<button onclick="dec()">Decrypt</button><pre id="out"></pre>
+<script>const P=${JSON.stringify(payload)};
+async function dec(){const pw=document.getElementById('pw').value;if(!pw)return;
+try{const s=Uint8Array.from(atob(P.salt),c=>c.charCodeAt(0));const iv=Uint8Array.from(atob(P.iv),c=>c.charCodeAt(0));const ct=Uint8Array.from(atob(P.cipher),c=>c.charCodeAt(0));
+const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+const pl=await crypto.subtle.decrypt({name:'AES-GCM',iv},k,ct);
+const notes=JSON.parse(new TextDecoder().decode(pl));
+document.getElementById('out').textContent=notes.map(n=>'['+(n.star?'★':'·')+'] '+n.title+'\\n'+n.text+'\\n---').join('\\n');
+}catch(e){document.getElementById('out').textContent='DECRYPTION FAILED — WRONG PASSWORD';}}<\/script></body></html>`;
+}
+
+function downloadHTML(filename, html) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([html], { type:'text/html' })), download: filename });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER NOTES
+// ═══════════════════════════════════════════════════
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function render() {
+  const notes = getNotes().sort((a,b) => b.star - a.star);
+  const list  = document.getElementById('list');
+  list.innerHTML = '';
+  if (!notes.length) { list.innerHTML = '<div class="emptyMsg">NO NOTES YET</div>'; return; }
+
+  const wrap = document.createElement('div');
+  if (selectModeOn) wrap.classList.add('selectMode');
+
+  notes.forEach(n => {
+    const item = document.createElement('div');
+    item.className = 'noteItem' + (selectedIds.has(n.id) ? ' selected' : '');
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.className = 'noteCheckbox'; cb.checked = selectedIds.has(n.id);
+    cb.addEventListener('click', e => toggleSelect(n.id, e));
+
+    const body = document.createElement('div');
+    body.className = 'noteBody';
+    body.innerHTML =
+      `<div class="noteTitle">${escH(n.title||'Untitled')}</div>` +
+      `<div class="notePreview">${escH((n.text||'').slice(0,90))}</div>` +
+      `<div class="noteDate">${n.created ? new Date(n.created).toLocaleString() : ''}</div>`;
+
+    const star = document.createElement('button');
+    star.className = 'starBtn' + (n.star ? ' on' : '');
+    star.textContent = '★';
+    star.addEventListener('click', e => toggleStar(n.id, e));
+    item.addEventListener('click', () => loadNote(n));
+    item.appendChild(cb); item.appendChild(body); item.appendChild(star);
+    wrap.appendChild(item);
+  });
+
+  list.appendChild(wrap);
+}
+
+// ═══════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+loadVizConfig();
+render();
+</script>
+</body>
+</html>
